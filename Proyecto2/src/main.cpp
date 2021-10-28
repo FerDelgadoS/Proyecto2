@@ -95,5 +95,5 @@ void loop()
   LCD.print("       ");
   LCD.print(voltaje3);
 
-  delay(500); // es recomendado tener un delay por el LCD y como se debe refrescar el mismo
+  delay(250); // es recomendado tener un delay por el LCD y como se debe refrescar el mismo
 }
