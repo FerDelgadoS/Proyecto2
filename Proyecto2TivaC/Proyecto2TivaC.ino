@@ -17,6 +17,26 @@
 
 //Pines de comunicación USART
 
+#define note_cc 261
+#define note_dd 294
+#define note_ee 329
+#define note_ff 349
+#define note_g 391
+#define note_gS 415
+#define note_a 440
+#define note_aS 455
+#define note_b 466
+#define note_cH 523
+#define note_cSH 554
+#define note_dH 587
+#define note_dSH 622
+#define note_eH 659
+#define note_fH 698
+#define note_fSH 740
+#define note_gH 784
+#define note_gSH 830
+#define note_aH 880
+
 
 #define sensorPin PB_5
 
@@ -78,6 +98,9 @@ void LCD_Sprite(int x, int y, int width, int height, unsigned char bitmap[], int
 //---------------------------------------------------------------------------------------------------------------------
 //void
 //---------------------------------------------------------------------------------------------------------------------
+
+int buzzerPin = PF_2;
+
 int sensorValue = 0;  // variable to store the value coming from the sensor
 int voltaje2 = 0;
 int voltaje1 = 0;
@@ -101,6 +124,7 @@ void setup() {
   Serial.begin (115200);
   Serial3.begin(115200);
 
+  pinMode(buzzerPin, OUTPUT);
   pinMode (leda, OUTPUT);
   pinMode (ledv, OUTPUT);
   pinMode (ledr, OUTPUT);
@@ -122,26 +146,22 @@ void setup() {
   LCD_Init();
   LCD_Clear(0x00);
   FillRect(0, 0, 319, 239, 0xFFFF);
-  FillRect(50, 60, 20, 20, 0xF800);
-  FillRect(70, 60, 20, 20, 0x07E0);
-  FillRect(90, 60, 20, 20, 0x001F);
+  /*FillRect(50, 60, 20, 20, 0xF800);
+    FillRect(70, 60, 20, 20, 0x07E0);
+    FillRect(90, 60, 20, 20, 0x001F);*/
 
   //FillRect(0, 0, 319, 206, 0x421b);
-  String text1 = "Sensor de Peso";
-
-  LCD_Print(text1, 50, 150, 2, 0x001F, 0xFFFF);
-  LCD_Print(dutycycleled1, 50, 200, 2, 0x001F, 0xFFFF);
+  String text1 = "Sensor de temp";
+  //dutycycleled1 = "<HOLA";
+  LCD_Print(text1, 50, 30, 2, 0x001F, 0xFFFF);
+  LCD_Print(dutycycleled1, 120, 160, 2, 0x001F, 0xFFFF);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 //loop
 //---------------------------------------------------------------------------------------------------------------------
 void loop() {
-  for (int x = 0; x < 320 - 32; x++) {
-    int anim2 = (x / 35) % 4;
-    LCD_Sprite(60, 100, 32, 32, pesaSprite, 4, anim2, 0, 1);
-    delay(15);
-  }
+
   if (digitalRead(btn2) == LOW)
   {
     if (contador1 >= 0)
@@ -173,12 +193,17 @@ void loop() {
     if (Serial3.available() > 0) {
       //Se leen los datos provenientes del ESP32
       dutycycleled1 = Serial3.readStringUntil('\n');
-    }
+
+  }
     Serial3.println(dutycycleled1);
+    FillRect(120, 100, 30, 20, 0xFFFF);
+    LCD_Print(dutycycleled1, 120, 100, 2, 0x001F, 0xFFFF);
     analogWrite(ledv, encendido);
     delay(100);
     analogWrite(ledv, apagado);
     contador1 = 0;
+    beep(note_eH, 500);
+   
   }
 
   if (subirDato == 1)
@@ -188,6 +213,15 @@ void loop() {
     delay(100);
     analogWrite(leda, apagado);
     subirDato = 0;
+    beep(note_a, 500);
+    beep(note_a, 500);
+    beep(note_a, 500);
+    beep(note_ff, 350);
+    beep(note_cH, 150);
+    beep(note_a, 500);
+    beep(note_ff, 350);
+    beep(note_cH, 150);
+    beep(note_a, 650);
 
   }
 
@@ -219,6 +253,11 @@ void writeSD(void) {
   } else {
     // if the file didn't open, print an error:
     Serial.println("error opening data.csv");
+  }
+  for (int x = 0; x < 320 - 32; x++) {
+    int anim2 = (x / 35) % 3;
+    LCD_Sprite(60, 100, 50, 50, pesaSprite, 3, anim2, 0, 1);
+    delay(15);
   }
 }
 //***************************************************************************************************************************************
@@ -570,4 +609,15 @@ void LCD_Sprite(int x, int y, int width, int height, unsigned char bitmap[], int
 
   }
   digitalWrite(LCD_CS, HIGH);
+}
+//***************************************************************************************************************************************
+// FUNCION DE BUZZER
+//***************************************************************************************************************************************
+
+void beep(int note, int duration)
+{
+  tone(buzzerPin, note, duration / 2);
+  delay(duration / 2);
+  noTone(buzzerPin);
+  delay(duration / 2 + 20);
 }

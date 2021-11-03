@@ -21,7 +21,7 @@
 #define en 26
 #define rs 25
 
-#define pot1 4
+#define pot1 15
 //#define pot2 15
 
 
@@ -41,7 +41,7 @@ int adcRaw;
 float voltaje;
 float adcFiltradoEMA = 0; // S(0) = Y(0)
 
-int dutycycleled1 = 0; //se refiere a la señal PWM a la que trabajaran los leds desde un inicio.
+float dutycycleled1 = 0; //se refiere a la señal PWM a la que trabajaran los leds desde un inicio.
 int dutycycleled2 = 0;
 double alpha = 0.09; // Factor de suavizado (0-1)
 
@@ -72,9 +72,10 @@ void loop()
 {
 
   voltaje = analogReadMilliVolts(pot1);                                  //se fija un ajuste a la señal de entrada para poder trabajar con el sensor de temperatura lm35
-  voltaje = voltaje / 10;                                                //se divide poor cada cuantos mV se tiene un grado centigrado
+  voltaje = (voltaje / 10) - 20 ;                                                //se divide poor cada cuantos mV se tiene un grado centigrado
   adcFiltradoEMA = (alpha * voltaje) + ((1.0 - alpha) * adcFiltradoEMA); //se procede con el filtro EMA
-  dutycycleled1 = adcFiltradoEMA;                                        //esto me servira para mandar el valor a lso servicios de adafruit
+  dutycycleled1 = adcFiltradoEMA;       
+           Serial.println(dutycycleled1);                        //esto me servira para mandar el valor a lso servicios de adafruit
   Serial2.println(dutycycleled1);
 
   if (Serial2.available() > 0)
