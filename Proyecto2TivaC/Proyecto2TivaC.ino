@@ -115,6 +115,9 @@ int encendido = 255;
 int apagado = 0;
 File myFile;
 
+extern uint8_t fondo[]; //Fondo
+
+
 //---------------------------------------------------------------------------------------------------------------------
 //setup
 //---------------------------------------------------------------------------------------------------------------------
@@ -145,7 +148,8 @@ void setup() {
   Serial.println("Inicio");
   LCD_Init();
   LCD_Clear(0x00);
-  FillRect(0, 0, 319, 239, 0xFFFF);
+ // FillRect(0, 0, 319, 239, 0xFFFF);
+  LCD_Bitmap(0, 0, 320, 240, fondo);
   /*FillRect(50, 60, 20, 20, 0xF800);
     FillRect(70, 60, 20, 20, 0x07E0);
     FillRect(90, 60, 20, 20, 0x001F);*/
@@ -196,7 +200,6 @@ void loop() {
 
   }
     Serial3.println(dutycycleled1);
-    FillRect(120, 100, 30, 20, 0xFFFF);
     LCD_Print(dutycycleled1, 120, 100, 2, 0x001F, 0xFFFF);
     analogWrite(ledv, encendido);
     delay(100);
