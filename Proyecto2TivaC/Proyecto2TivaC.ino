@@ -2,20 +2,37 @@
 //*****************************************************************************
 // Universidad del Valle de Guatemala
 // BE3015 - Electrónica Digital 2
-// Fernando Delgado
+// Fernando Delgado 19144
 // Proyecto 2
 //*****************************************************************************
 
 //*****************************************************************************
 // Librerías
 //-----------------------------------------------------------------------------
-#include <SPI.h>
-#include <SD.h>
+#include <SPI.h> //se incluye la libreria de la comunicacion SPI para que gfunciona la comunicacion con la SD 
+#include <SD.h> //Se incluye la libreria de la SD 
+
+//se incluye las librerias para la pantalla TFT
+#include <stdint.h>
+#include <stdbool.h>
+#include <TM4C123GH6PM.h>
+#include "inc/hw_ints.h"
+#include "inc/hw_memmap.h"
+#include "inc/hw_types.h"
+#include "driverlib/debug.h"
+#include "driverlib/gpio.h"
+#include "driverlib/interrupt.h"
+#include "driverlib/rom_map.h"
+#include "driverlib/rom.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/timer.h"
+
+#include "bitmaps.h"
+#include "font.h"
+#include "lcd_registers.h"
 
 
-
-
-//Pines de comunicación USART
+//pines para las notas del Buzzer
 
 #define note_cc 261
 #define note_dd 294
@@ -37,35 +54,19 @@
 #define note_gSH 830
 #define note_aH 880
 
-
+//pin del Buzzer
 #define sensorPin PB_5
 
+//pines de las leds integradas en la Tiva c
 #define leda PF_2
 #define ledv PF_3
 #define ledr PF_1
 
+// Pines de los push buttons que trae integrado la Tiva C
 #define btn1 PF_0
 #define btn2 PF_4
 
-
-#include <stdint.h>
-#include <stdbool.h>
-#include <TM4C123GH6PM.h>
-#include "inc/hw_ints.h"
-#include "inc/hw_memmap.h"
-#include "inc/hw_types.h"
-#include "driverlib/debug.h"
-#include "driverlib/gpio.h"
-#include "driverlib/interrupt.h"
-#include "driverlib/rom_map.h"
-#include "driverlib/rom.h"
-#include "driverlib/sysctl.h"
-#include "driverlib/timer.h"
-
-#include "bitmaps.h"
-#include "font.h"
-#include "lcd_registers.h"
-
+//Se define lsopines que afectaran diectamente la pantalla TFT
 #define LCD_RST PD_0
 #define LCD_CS PD_1
 #define LCD_RS PD_2
@@ -78,8 +79,10 @@ int DPINS[] = {PB_0, PB_1, PB_2, PB_3, PB_4, PB_5, PB_6, PB_7};
 //----------------------------------------------------------------------------------------------------------------------
 //Prototipos de funciones
 //----------------------------------------------------------------------------------------------------------------------
-void writeSD(void);
 
+void writeSD(void);//se llama a la funcion que me ayudara a guardar datos en la SD
+
+//Se llama a las funciones que ayudaran a imprimir en la TFT
 void LCD_Init(void);
 void LCD_CMD(uint8_t cmd);
 void LCD_DATA(uint8_t data);
@@ -98,24 +101,24 @@ void LCD_Sprite(int x, int y, int width, int height, unsigned char bitmap[], int
 //---------------------------------------------------------------------------------------------------------------------
 //void
 //---------------------------------------------------------------------------------------------------------------------
-
+//Se llamara al pi den Buzzer
 int buzzerPin = PF_2;
 
 int sensorValue = 0;  // variable to store the value coming from the sensor
-int voltaje2 = 0;
+int voltaje2 = 0;//seran las variables asignadas para la entrada de comunicacion UART
 int voltaje1 = 0;
-String dutycycleled1 = "";
+String dutycycleled1 = ""; //Se llamara a esta funcion ya que sera la que guardara el dato del sensor del sp32
 
 //se refiere a la señal PWM a la que trabajaran los leds desde un inicio.
 int dutycycleled2 = 0;
 int dutycycleled3 = 0;
-int contador1 = 0;
-int subirDato = 0;
+int contador1 = 0;//contador para boton 1
+int subirDato = 0;//contador para boton 2
 int encendido = 255;
 int apagado = 0;
-File myFile;
+File myFile;//se llama a etsa funcion para nombrar el tipo de archivo que se tendr apara guardar en la SD
 
-extern uint8_t fondo[]; //Fondo
+extern uint8_t fondo[]; //Fondo//funcion para imprimir libreria en la pantalla TFT
 
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -124,22 +127,23 @@ extern uint8_t fondo[]; //Fondo
 
 void setup() {
   // declare the ledPin as an OUTPUT:
-  Serial.begin (115200);
+  Serial.begin (115200);//se llama a las dos comunicaciones seriales para que interactuen losdos microcontroladores
   Serial3.begin(115200);
 
-  pinMode(buzzerPin, OUTPUT);
-  pinMode (leda, OUTPUT);
+  pinMode(buzzerPin, OUTPUT);//se declara el pin de salida al Buzzer
+  pinMode (leda, OUTPUT);//se declaran las salidas de las leds integradas
   pinMode (ledv, OUTPUT);
   pinMode (ledr, OUTPUT);
 
-  pinMode (btn1, INPUT_PULLUP);
+  pinMode (btn1, INPUT_PULLUP);//de delclara el estado en el que se encuentran lso botones integrados en la Tiva C
   pinMode (btn2, INPUT_PULLUP);
 
-  pinMode(PA_3, OUTPUT);
-  SPI.setModule(0);
+  pinMode(PA_3, OUTPUT);//Se define la salida
+  SPI.setModule(0);//se define el modulo del SPI en el canal 0 de 3
 
+  // se tendra los comandos base para que fincione la comunicacion con la SD
   if (!SD.begin(PA_3)) {
-    Serial.println("Fallo tu logica");
+    Serial.println("Fallo tu logica");//esto es progamacion preventba que si no tengo la SD conectada me mandara este mensaje al igual que si algo fallo
     return;
   }
   SysCtlClockSet(SYSCTL_SYSDIV_2_5 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_16MHZ);
@@ -148,16 +152,16 @@ void setup() {
   Serial.println("Inicio");
   LCD_Init();
   LCD_Clear(0x00);
- // FillRect(0, 0, 319, 239, 0xFFFF);
-  LCD_Bitmap(0, 0, 320, 240, fondo);
+  // FillRect(0, 0, 319, 239, 0xFFFF);
+  LCD_Bitmap(0, 0, 320, 240, fondo);//se llama a la imagen que se tiene en la libreria d efondo de 8 bits
   /*FillRect(50, 60, 20, 20, 0xF800);
     FillRect(70, 60, 20, 20, 0x07E0);
     FillRect(90, 60, 20, 20, 0x001F);*/
 
   //FillRect(0, 0, 319, 206, 0x421b);
-  String text1 = "Sensor de temp";
+  String text1 = "Sensor de temp";//se imprime en la pantalla TTF la frase
   //dutycycleled1 = "<HOLA";
-  LCD_Print(text1, 50, 30, 2, 0x001F, 0xFFFF);
+  LCD_Print(text1, 50, 30, 2, 0x001F, 0xFFFF);//se coloca en el lugar donde se quiere la frase dando cordenadas especificas como tipo deletra y relleno
   LCD_Print(dutycycleled1, 120, 160, 2, 0x001F, 0xFFFF);
 }
 
@@ -166,12 +170,12 @@ void setup() {
 //---------------------------------------------------------------------------------------------------------------------
 void loop() {
 
-  if (digitalRead(btn2) == LOW)
+  if (digitalRead(btn2) == LOW)//Se inician loscontadores para encontrar flancos que inciilcen la sintrucciones
   {
     if (contador1 >= 0)
     {
       contador1 = contador1 + 1; //subira de uno en uno esto teniendo un mejor control
-      Serial.println(contador1);
+      Serial.println(contador1);//me iondicara en que valor esta el contador si esta conectado al momitor serial del programa
     }
     if (contador1 >= 2) //esto es para recetear el contador para numero mayores de 255
     {
@@ -179,7 +183,7 @@ void loop() {
       Serial.println(contador1);
     }
   }
-  if (digitalRead(btn1) == LOW)
+  if (digitalRead(btn1) == LOW)//esto sera para inciializar otra funcion
   {
     if (subirDato <= 0)
     {
@@ -192,30 +196,30 @@ void loop() {
       Serial.println(subirDato);
     }
   }
-  if (contador1 == 1)
+  if (contador1 == 1)//se tiene el primer flanco en donde s epide el dato al SP32 del sensor y lo manda de regreso al PS32
   {
-    if (Serial3.available() > 0) {
+    if (Serial3.available() > 0) {//si el SP32 puede enviar algo lo toma
       //Se leen los datos provenientes del ESP32
       dutycycleled1 = Serial3.readStringUntil('\n');
 
-  }
-    Serial3.println(dutycycleled1);
-    LCD_Print(dutycycleled1, 120, 100, 2, 0x001F, 0xFFFF);
-    analogWrite(ledv, encendido);
+    }
+    Serial3.println(dutycycleled1);// envia el dato de regreso al sp32
+    LCD_Print(dutycycleled1, 120, 100, 2, 0x001F, 0xFFFF);//imprime el dato en la TFT
+    analogWrite(ledv, encendido);//me demuestra por sonido y led que funciono la funcion
     delay(100);
     analogWrite(ledv, apagado);
     contador1 = 0;
-    beep(note_eH, 500);
-   
+    beep(note_eH, 500);//nota del buzzer
+
   }
 
-  if (subirDato == 1)
+  if (subirDato == 1)//segunda funcion para guardar en SD
   {
-    writeSD();
-    analogWrite(leda, encendido);
+    writeSD();//se tiene la funcion de escritura
+    analogWrite(leda, encendido);//si funciona todo se prender una led e iniciara una melodia
     delay(100);
     analogWrite(leda, apagado);
-    subirDato = 0;
+    subirDato = 0;//se baja el flanco para que no suba mas datos 
     beep(note_a, 500);
     beep(note_a, 500);
     beep(note_a, 500);
@@ -230,18 +234,19 @@ void loop() {
 
   delay(200);
 }
-
+//***************************************************************************************************************************************
+// Función para escribir en la SD
+//***************************************************************************************************************************************
 void writeSD(void) {
 
-  myFile = SD.open("test.csv", FILE_WRITE);
+  myFile = SD.open("test.csv", FILE_WRITE);//abrira una carpeta en formato excel o hoja de calculo 
 
   // if the file opened okay, write to it:
   if (myFile) {
     Serial.println("Escribiendo data");
 
     Serial.print("Temperatura: ");
-    Serial.print(dutycycleled1);
-
+    Serial.print(dutycycleled1);//sobreescribe sobre el dato que guardo en el ultimo momento del sensor 
 
 
     myFile.print(dutycycleled1.toInt());
@@ -257,7 +262,7 @@ void writeSD(void) {
     // if the file didn't open, print an error:
     Serial.println("error opening data.csv");
   }
-  for (int x = 0; x < 320 - 32; x++) {
+  for (int x = 0; x < 320 - 32; x++) {//uncion de animacion ya que se tien varias columnas reproducria cara una proporcionando un efecto de movimiento 
     int anim2 = (x / 35) % 3;
     LCD_Sprite(60, 100, 50, 50, pesaSprite, 3, anim2, 0, 1);
     delay(15);
@@ -617,7 +622,7 @@ void LCD_Sprite(int x, int y, int width, int height, unsigned char bitmap[], int
 // FUNCION DE BUZZER
 //***************************************************************************************************************************************
 
-void beep(int note, int duration)
+void beep(int note, int duration)//funcion del buzzer para que funcionen la melodias
 {
   tone(buzzerPin, note, duration / 2);
   delay(duration / 2);
